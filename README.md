@@ -3,18 +3,19 @@
 ## Table of Contents
 
 1. [Introduction](#introduction)
-2. [Bill of Materials](#bom)
+2. [Bill of Materials & Goals](#bom)
 3. [Jailbreaking Your Kindle](#jailbreak)
 4. [Installing Other Hacks](#hacks)
-5. [Upload Custom Images to Your Kindle](#upload)
+5. [Upload Custom Images](#upload)
 6. [Obtaining SSH Access Using USBNetwork](#ssh)
+7. [Scripting & Programming](#scripting)
 
 
 ## 🏁 Introduction <a name="introduction"/> 🏁
 
 Have you got an old spare Kindle floating around that never gets used? Why not turn it into an automatically rotating e-ink based photo frame! Unlike traditional photo frames, an e-ink photo frame is able to automatically rotate the image at a pre-determined interval, allowing for a dynamic and stylish decor item with a monochromatic vibe. Unlike most electronic devices, Kindles use an e-ink based display which is able to create an image by passing electricity through e-ink capsules. This allows it to retain the last image placed on it without needing to consistently power the screen, leading to the remarkably long battery life that Kindle's are known for. Here's a photo of the end product made on an old Kindle 2 International I picked up on Facebook Marketplace:
 
-## 📜 Bill of Materials <a name="bom"/> 📜
+## 📜 Bill of Materials & Goals <a name="bom"/> 📜
 
 To get started you'll need the following things:
 
@@ -23,6 +24,12 @@ To get started you'll need the following things:
 3. A computer (preferably Linux)
 4. A photo frame
 5. Miscellaneous power tools
+
+With our design, we wanted to keep a few things in our mind:
+
+1. This was intended as a gift as a secret santa present - it should prioritise reliability as its number one goal as the recipient should not have to go and debug our code!
+2. The charging conditions were unknown, it could be both continuously plugged in and powered or mostly left unpowered to be charged when it's out of battery. Thus, it should work regardless of either and should have long battery life if possible. It should also be able to recover if it ever ran out of battery and was fully restarted as a result.
+3. The particular model I had does not have a WiFi connection so all images need to be stored locally and preset ahead of time.
 
 ## 🔓️ Jailbreaking Your Kindle <a name="jailbreak"/> 🔓️
 
@@ -47,7 +54,7 @@ The USB Network allows us to gain ssh access to the Kindle, allowing us to execu
 
 The screensaver hack allows us to upload arbitrary images and use them as screensavers. Note that if you have an ad-supported Kindle, this **will not** work! Again the process is identical - [identify your version](https://www.mobileread.com/forums/showthread.php?t=88004) and update your kindle by copying the file over to the root of the Kindle. After the update has been completed successfully, you should see a custom screensaver being displayed whenever you turn your screen off. There are also more detailed instructions for firmwares [2.X, 3.X, 4.X](https://wiki.mobileread.com/wiki/Kindle_Screen_Saver_Hack_for_all_2.x%2C_3.x_&_4.x_Kindles) and firmwares [5.X](https://www.mobileread.com/forums/showthread.php?t=195474) available walking through it step by step.
 
-## 🖼️ Uploading Custom Images to Your Kindle <a name="upload"/> 🖼️
+## 🖼️ Uploading Custom Images <a name="upload"/> 🖼️
 
 Now that the screensaver hack is installed, we'll upload a set of custom images that your Kindle will rotate through automatically:
 
@@ -68,13 +75,13 @@ Now we have a Kindle loaded with images, but in order to change them you have to
 
 In order to execute arbitrary code on our Kindle, we'll need to obtain ssh access into the Kindle which runs a custom Linux OS. First, plug your Kindle into your computer before unmounting and ejecting it. This should render your Kindle usable whilst remaining plugged in. On the Kindle, bring up the search bar by pressing either `DEL` or the keyboard key before typing:
 
-```[bash]
+```bash
 ;debugOn
 ```
 
 and pressing the enter key. Then, bring up the search bar again and activate USB Networking by typing either:
 
-```[bash]
+```bash
 # Use this on firmware 2.X
 `usbNetwork
 
@@ -86,32 +93,83 @@ This activates USB Network and your Kindle can now be connected to using ssh:
 
 1. First identify the attached USB device using the following command:
 
-```
+```bash
 ifconfig
 ```
 
 2. If network manager is used on your computer, disable the automatic management of the USB device. This is needed as network manager will automatically reassign the ip address given to the Kindle. This can be done using:
 
-```
+```bash
 nmcli dev disconnect <usb device id from #1>
 ```
 
 3. Configure the host ip address for the USB device, setting it to `192.168.2.1` for most devices (`192.168.15.201` for K4 due to the defaults)
 
-```
+```bash
 sudo ifconfig <usb device id from #> 192.168.2.1
 ```
 
 4. Ssh into the Kindle using the Kindle's ip address which is `192.168.2.2` for most devices (`192.168.15.244` if the other ip was used)
 
-```
+```bash
 ssh root@192.168.2.2
 ```
 
 5. Enter the default password `mario` to login to the device and use the command to mount the device in read-write mode:
 
-```
+```bash
 mntroot rw
 ```
 
 You should now be logged into the Kindle through ssh and can look around the filesystem!
+
+## Scripting & Programming <a name="scripting"/>
+
+
+### Setting up the Cron Job
+
+Considering that reliability was one of the key focuses and that our photo frame should be able to recover from a full restart state in the event of battery loss, a cron job was the most intuitive way of doing 2 things:
+
+1. If the Kindle was ever restarted, the cron job could trigger the background screensaver script to rerun
+2. If for some reason the background script stopped running, the cron job could recover by restarting the background screensaver script
+
+For our Kindle, cron jobs were available under the `/etc/crontab/root` file. Add the following line to run the `assess_screensaver.sh` script:
+
+```bash
+*/5 * * * * /mnt/us/assess_screensaver.sh &
+```
+
+Ensure that there is a newline terminating the cron file in order for it to be considered valid! Restart cron using `/etc/init.d/cron restart`. The above line will continuously run the `assess_screensaver.sh` script in the background (i.e. as a child process of the cron process) every 5 minutes. The actual contents of the assessment script are shown below and is included in this repo:
+
+```bash
+# Is the screensaver script running already?
+rJobs=$(ps -ef | grep /mnt/us/screensaver.sh | grep -v grep | wc -l)
+
+if [ $rJobs -eq 0 ]
+then
+	# Start background screensaver script
+	/mnt/us/screensaver.sh &
+  
+	# Get the current state, and toggle it to trigger the screensaver cycle
+	state=$(lipc-get-prop -s com.lab126.powerd state)
+	if [ $state = "active" ]
+	then
+		lipc-send-event com.lab126.powerd.debug dbg_power_button_pressed # sleep
+	else
+		lipc-set-prop -i com.lab126.powerd wakeUp 1 # wake up
+	fi
+fi
+```
+
+The `rJobs` variable first uses the `ps` command to list the processes currently running on the Kindle, filtering them to see which ones are running the `screensaver.sh` script and returning an integer count. If `rJobs` is equal to 0, then we start up the screensaver script as a background process. We then retrieve the state of the device using [lipc](https://wiki.mobileread.com/wiki/Lipc).
+
+`lipc` is a proprietary inter-process communications library present on Kindles which is responsible for controlling a myriad of functions such as power, audio, WiFi and much more. You can find greater details about different modules that can be interacted with under lipc by using the `lipc-probe` command. Here, we use the `lipc-get-prop` command to retrieve the state of the Kindle. There are 4 possible states the Kindle can be in:
+
+- active
+- screensaver
+- readyToSuspend
+- sleep
+
+Particularly important to note is that when plugged in, the Kindle will never reach the readyToSuspend or sleep state, making testing tricky. A typical Kindle's state progression when left idle and unplugged is active (10m) > screensaver (1m) > readyToSuspend (5s) > sleep (indefinite). The sleep state is disruptive as it suspends the Kindles CPU, pausing things like background scripts from running making it something to be aware of. This is important, so keep it in mind for later!
+
+After determining the current state of the kindle, we toggle it - if it is currently active we move it to the screensaver state by simulating a power button press using `lipc-send-event`, otherwise we wake it up using the `lipc-set-prop` command. Thus, our cron job is able to monitor whether the background screensaver script is running, start it if it isn't and toggle the state to enter the needed cycle of the background screensaver script.
