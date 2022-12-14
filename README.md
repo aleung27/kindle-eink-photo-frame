@@ -6,6 +6,8 @@
 2. [Bill of Materials](#bom)
 3. [Jailbreaking Your Kindle](#jailbreak)
 4. [Installing Other Hacks](#hacks)
+5. [Upload Custom Images to Your Kindle](#upload)
+6. [Obtaining SSH Access Using USBNetwork](#ssh)
 
 
 ## 🏁 Introduction <a name="introduction"/> 🏁
@@ -43,4 +45,73 @@ The USB Network allows us to gain ssh access to the Kindle, allowing us to execu
 
 ### Screensaver Hack
 
-The screensaver hack allows us to upload arbitrary images and use them as screensavers. Note that if you have an ad-supported Kindle, this **will not** work! Again the process is identical - [identify your version](https://www.mobileread.com/forums/showthread.php?t=88004) and update your kindle by copying the file over to the root of the Kindle.
+The screensaver hack allows us to upload arbitrary images and use them as screensavers. Note that if you have an ad-supported Kindle, this **will not** work! Again the process is identical - [identify your version](https://www.mobileread.com/forums/showthread.php?t=88004) and update your kindle by copying the file over to the root of the Kindle. After the update has been completed successfully, you should see a custom screensaver being displayed whenever you turn your screen off. There are also more detailed instructions for firmwares [2.X, 3.X, 4.X](https://wiki.mobileread.com/wiki/Kindle_Screen_Saver_Hack_for_all_2.x%2C_3.x_&_4.x_Kindles) and firmwares [5.X](https://www.mobileread.com/forums/showthread.php?t=195474) available walking through it step by step.
+
+## 🖼️ Uploading Custom Images to Your Kindle <a name="upload"/> 🖼️
+
+Now that the screensaver hack is installed, we'll upload a set of custom images that your Kindle will rotate through automatically:
+
+1. Plug your Kindle into your computer
+2. Ensure your set of image files align with the needed resolution for screensaver image for your Kindle version. Generally images should be one of the following sizes and the image format should be PNG (5.X hack) or PNG/JPEG (2.X-4.X hack):
+- **600x800** for touch/KT2/KT3 (5.X hack) and most earlier models including the K2I (2.X-4.X hack) 
+- **758x1024** for PW/PW2 (5.X hack) 
+- **824x1200** for DX models (2.X-4.X hack)
+- **1072x1448** for KV/PW3/KOA (5.X hack)
+3. Copy the images to the `linkss/screensavers` folder
+4. If you want the images to be randomised everytime the Kindle reboots, add an empty file with the name `random` in the `linkss` folder.
+5. Reboot the Kindle for the images to be applied
+6. After your Kindle reboots, if you continuously toggle the screensaver you should see the images change
+
+Now we have a Kindle loaded with images, but in order to change them you have to interact manually with the Kindle to toggle the screensaver. To overcome this, we'll need some custom scripts!
+
+## 📶 Obtaining SSH Access Using USBNetwork <a name="ssh"/> 📶
+
+In order to execute arbitrary code on our Kindle, we'll need to obtain ssh access into the Kindle which runs a custom Linux OS. First, plug your Kindle into your computer before unmounting and ejecting it. This should render your Kindle usable whilst remaining plugged in. On the Kindle, bring up the search bar by pressing either `DEL` or the keyboard key before typing:
+
+```[bash]
+;debugOn
+```
+
+and pressing the enter key. Then, bring up the search bar again and activate USB Networking by typing either:
+
+```[bash]
+# Use this on firmware 2.X
+`usbNetwork
+
+# Use this on other firmwares
+~usbNetwork
+```
+
+This activates USB Network and your Kindle can now be connected to using ssh:
+
+1. First identify the attached USB device using the following command:
+
+```
+ifconfig
+```
+
+2. If network manager is used on your computer, disable the automatic management of the USB device. This is needed as network manager will automatically reassign the ip address given to the Kindle. This can be done using:
+
+```
+nmcli dev disconnect <usb device id from #1>
+```
+
+3. Configure the host ip address for the USB device, setting it to `192.168.2.1` for most devices (`192.168.15.201` for K4 due to the defaults)
+
+```
+sudo ifconfig <usb device id from #> 192.168.2.1
+```
+
+4. Ssh into the Kindle using the Kindle's ip address which is `192.168.2.2` for most devices (`192.168.15.244` if the other ip was used)
+
+```
+ssh root@192.168.2.2
+```
+
+5. Enter the default password `mario` to login to the device and use the command to mount the device in read-write mode:
+
+```
+mntroot rw
+```
+
+You should now be logged into the Kindle through ssh and can look around the filesystem!
