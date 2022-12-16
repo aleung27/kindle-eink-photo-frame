@@ -173,3 +173,41 @@ The `rJobs` variable first uses the `ps` command to list the processes currently
 Particularly important to note is that when plugged in, the Kindle will never reach the readyToSuspend or sleep state, making testing tricky. A typical Kindle's state progression when left idle and unplugged is active (10m) > screensaver (1m) > readyToSuspend (5s) > sleep (indefinite). The sleep state is disruptive as it suspends the Kindles CPU, pausing things like background scripts from running making it something to be aware of. This is important, so keep it in mind for later!
 
 After determining the current state of the kindle, we toggle it - if it is currently active we move it to the screensaver state by simulating a power button press using `lipc-send-event`, otherwise we wake it up using the `lipc-set-prop` command. Thus, our cron job is able to monitor whether the background screensaver script is running, start it if it isn't and toggle the state to enter the needed cycle of the background screensaver script.
+
+### Setting up the Background Script
+
+The background screensaver script runs continuously on the Kindle and is responsible for using the event listener `lipc-wait-event` to react to changes in the state of the Kindle. It's main responsibility is ensuring that if we are currently showing a photo in screensaver mode, that the Kindle wakes up after a set period of time before going back to the screensaver state, essentially allowing for the rotation of the image. Under `/mnt/us` create the file `screensaver.sh` with the following contents:
+
+```bash
+lipc-wait-event -m com.lab126.powerd goingToScreenSaver,outOfScreenSaver,readyToSuspend | while read event; do
+	# echo "$(date): $event" >> /mnt/us/logs.txt
+	case "$event" in
+		readyToSuspend*)
+			lipc-set-prop -i com.lab126.powerd deferSuspend 5000;;
+		outOfScreenSaver*)
+			wait $!
+			/mnt/us/set_sleep.sh &;;
+		goingToScreenSaver*)
+			wait $!
+			/mnt/us/set_wakeup.sh &;;
+	esac
+done;
+```
+
+The above script continuously waits for one of the following events to occur from the `powerd` module:
+
+- goingToScreenSaver
+- outOfScreenSaver
+- readyToSuspend
+
+It then pipes this to a while loop which contains a case statement which does one of the following depending on what event was received:
+
+- **readyToSuspend**: If we're moving into this state, the Kindle must be in the screensaver state and is about to enter sleep. This is undesirable for our application as when it enters the sleep state, background scripts stop running making it difficult to both set a wakeup and monitor for changes to the state of the Kindle. Here we defer the suspension of the kindle for an arbitrary amount of time. Note this prop can only be set when the Kindle is in the readyToSuspend state. Other possible solutions include using `rtcWakeup` property which allows the Kindle to automatically wake up after a duration of time using the onboard real-time clock but this still has issues as the event listener will be suspended meaning it will not be triggered on wakeup.
+- **outOfScreenSaver**: This state occurs when the Kindle has moved to the active state from the screensaver. All we want to do in this state is go back to the screensaver so we call the `/mnt/us/set_sleep.sh` script in the background and reap the previous child process whilst we're here to avoid zombie processes. The `set_sleep.sh` script simply waits a second and then calls `lipc-send-event com.lab126.powerd.debug dbg_power_button_pressed` to toggle the state back to the screensaver.
+- **goingToScreenSaver**: This state happens when the Kindle moves into the screensaver state. Here, we call the `mnt/us/set_wakeup.sh` script in the background which sleeps for the desired rotation time of the picture before calling setting the `wakeUp` property to change into the active state. Note this must be called as a background process otherwise the sleep will block the event listener from triggering.
+
+<p align="center">
+ <img src="https://user-images.githubusercontent.com/59858450/208090638-78c262cc-8480-4f08-902f-94d1fcf800c8.png" alt="state-diagram"/>
+    <br>
+    <em>State diagram showing the transition of the Kindle as the script runs</em>
+</p>
