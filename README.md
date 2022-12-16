@@ -9,11 +9,16 @@
 5. [Upload Custom Images](#upload)
 6. [Obtaining SSH Access Using USBNetwork](#ssh)
 7. [Scripting & Programming](#scripting)
-
+8. [Conclusions & Improvements](#conclusion)
 
 ## 🏁 Introduction <a name="introduction"/> 🏁
 
 Have you got an old spare Kindle floating around that never gets used? Why not turn it into an automatically rotating e-ink based photo frame! Unlike traditional photo frames, an e-ink photo frame is able to automatically rotate the image at a pre-determined interval, allowing for a dynamic and stylish decor item with a monochromatic vibe. Unlike most electronic devices, Kindles use an e-ink based display which is able to create an image by passing electricity through e-ink capsules. This allows it to retain the last image placed on it without needing to consistently power the screen, leading to the remarkably long battery life that Kindle's are known for. Here's a photo of the end product made on an old Kindle 2 International I picked up on Facebook Marketplace:
+<p align="center">
+ <img src="https://user-images.githubusercontent.com/59858450/208094817-b0c18577-c4cf-47a7-95f3-b65116f76740.jpg" alt="kindle"/>
+    <br>
+    <em>The end product - a Kindle transformed into an e-ink photo frame</em>
+</p>
 
 ## 📜 Bill of Materials & Goals <a name="bom"/> 📜
 
@@ -123,7 +128,7 @@ mntroot rw
 
 You should now be logged into the Kindle through ssh and can look around the filesystem!
 
-## Scripting & Programming <a name="scripting"/>
+## 💻️ Scripting & Programming <a name="scripting"/> 💻️
 
 
 ### Setting up the Cron Job
@@ -211,3 +216,12 @@ It then pipes this to a while loop which contains a case statement which does on
     <br>
     <em>State diagram showing the transition of the Kindle as the script runs</em>
 </p>
+
+## 🔚 Conclusions & Improvements <a name="conclusion"/> 🔚
+
+All that's now left to do is mount the Kindle into a frame! A wooden one complements the aesthetic of e-ink and can be found at any local shop. Mounting it into the frame can require a bit of fiddling, I utilise some double-sided tape and drilled a hole in the wood on the side for the charging cable to come out of. Give it a try and see what works best.
+
+After that, your Kindle is all set up and ready to go as an e-ink photo frame which automatically rotates through a series of images. There are some improvements you can look into as well if you want to extend the behaviour of your Kindle:
+- Look into using `rtcWakeup` rather than using a sleep would allow for longer battery life - especially for frames which rotate photos at a much less frequent interval.
+- Utilise WiFi to fetch an image from a remote server for a dynamic photo frame which changes regularly. This can be extended to functions like a weather display or calendar displayer! Unfortuantely my model did not come with WiFi capability so I couldn't explore this option.
+- Display the current amount of battery whilst on screensaver.
