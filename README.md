@@ -32,8 +32,8 @@ To get started you'll need the following things:
 
 With our design, we wanted to keep a few things in our mind:
 
-1. This was intended as a gift as a secret santa present - it should prioritise reliability as its number one goal as the recipient should not have to go and debug our code!
-2. The charging conditions were unknown, it could be both continuously plugged in and powered or mostly left unpowered to be charged when it's out of battery. Thus, it should work regardless of either and should have long battery life if possible. It should also be able to recover if it ever ran out of battery and was fully restarted as a result.
+1. This was intended as a secret santa present - it should prioritise reliability as its number one goal as the recipient should not have to go and debug our product!
+2. The charging conditions were unknown; it could be continuously plugged in and powered or charged only when it's out of battery. Thus, it should work regardless of either and should have long battery life if possible. It should also be able to recover if it ever ran out of battery and was fully restarted as a result.
 3. The particular model I had does not have a WiFi connection so all images need to be stored locally and preset ahead of time.
 
 ## 🔓️ Jailbreaking Your Kindle <a name="jailbreak"/> 🔓️
@@ -65,10 +65,12 @@ Now that the screensaver hack is installed, we'll upload a set of custom images 
 
 1. Plug your Kindle into your computer
 2. Ensure your set of image files align with the needed resolution for screensaver image for your Kindle version. Generally images should be one of the following sizes and the image format should be PNG (5.X hack) or PNG/JPEG (2.X-4.X hack):
+
 - **600x800** for touch/KT2/KT3 (5.X hack) and most earlier models including the K2I (2.X-4.X hack) 
-- **758x1024** for PW/PW2 (5.X hack) 
+- **758x1024** for PW/PW2 (5.X hack)
 - **824x1200** for DX models (2.X-4.X hack)
 - **1072x1448** for KV/PW3/KOA (5.X hack)
+
 3. Copy the images to the `linkss/screensavers` folder
 4. If you want the images to be randomised everytime the Kindle reboots, add an empty file with the name `random` in the `linkss` folder.
 5. Reboot the Kindle for the images to be applied
@@ -104,14 +106,14 @@ ifconfig
 
 2. If network manager is used on your computer, disable the automatic management of the USB device. This is needed as network manager will automatically reassign the ip address given to the Kindle. This can be done using:
 
-```bash
+```
 nmcli dev disconnect <usb device id from #1>
 ```
 
 3. Configure the host ip address for the USB device, setting it to `192.168.2.1` for most devices (`192.168.15.201` for K4 due to the defaults)
 
-```bash
-sudo ifconfig <usb device id from #> 192.168.2.1
+```
+sudo ifconfig <usb device id from #1> 192.168.2.1
 ```
 
 4. Ssh into the Kindle using the Kindle's ip address which is `192.168.2.2` for most devices (`192.168.15.244` if the other ip was used)
@@ -222,6 +224,9 @@ It then pipes this to a while loop which contains a case statement which does on
 All that's now left to do is mount the Kindle into a frame! A wooden one complements the aesthetic of e-ink and can be found at any local shop. Mounting it into the frame can require a bit of fiddling, I utilise some double-sided tape and drilled a hole in the wood on the side for the charging cable to come out of. Give it a try and see what works best.
 
 After that, your Kindle is all set up and ready to go as an e-ink photo frame which automatically rotates through a series of images. There are some improvements you can look into as well if you want to extend the behaviour of your Kindle:
+
 - Look into using `rtcWakeup` rather than using a sleep would allow for longer battery life - especially for frames which rotate photos at a much less frequent interval.
-- Utilise WiFi to fetch an image from a remote server for a dynamic photo frame which changes regularly. This can be extended to functions like a weather display or calendar displayer! Unfortuantely my model did not come with WiFi capability so I couldn't explore this option.
-- Display the current amount of battery whilst on screensaver.
+- Utilise WiFi to fetch an image from a remote server for a dynamic photo frame which changes regularly. This can be extended to functions like a weather or calendar display! Unfortunately my model did not come with WiFi capability so I couldn't explore this option.
+- Use the onboard `eips` module to write your own custom messages to the Kindle's e-ink screen.
+
+Enjoy repurposing your old Kindle and hope you enjoyed the tutorial!
